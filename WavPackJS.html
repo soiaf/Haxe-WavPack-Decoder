@@ -1,0 +1,125 @@
+<html>
+<head><title>haXe WavPack JS</title>
+		<script type="text/javascript" src="XAudioJS/XAudioServerMediaStreamWorker.js"></script>
+		<script type="text/javascript" src="XAudioJS/XAudioServer.js"></script>
+		<script type="text/javascript" src="XAudioJS/resampler.js"></script>
+		<script type="text/javascript" src="XAudioJS/swfobject.js"></script>
+
+</head>
+<body>
+<article>
+<b>WavPack Javascript player</b>
+<br />
+Use the file browser button below to select a WavPack file.
+This player works on both Firefox and Chrome.
+
+</article>
+<article>
+<input type="file" id="files" name="files[]" multiple />
+
+ </article>
+<script>
+	
+var audioHandle = null;
+var vblankEvent = null;
+var gonogo = 0;
+
+if (document.addEventListener){
+	document.getElementById('files').addEventListener('change', handleFileSelect, false);
+} else if (document.attachEvent){
+	document.getElementById('files').attachEvent('change', handleFileSelect);
+}
+
+//document.getElementById('files').addEventListener('change', handleFileSelect, false);
+ 
+function handleFileSelect(evt) {
+    var files = evt.target.files; // FileList object
+
+    // files is a FileList of File objects
+	  this.className = '';
+ 
+
+  var file = files[0], reader = new FileReader();
+	  
+  reader.onload = function (event) {
+  
+	audioHandle = null;
+	
+	var myByteArray = new Uint8Array(reader.result);
+
+	my_wpc = JSWvDemo.setUpPlayer(myByteArray);
+	
+	alert("Ready to start playing the file now");
+
+	
+	numchannels = WavPackUtils.WavpackGetReducedChannels(my_wpc);
+	
+	sampleRate = WavPackUtils.WavpackGetSampleRate(my_wpc);
+	
+	//alert("sample rate is " + sampleRate);
+	
+	audioHandle = new XAudioServer(numchannels, sampleRate, sampleRate >> 2, sampleRate << 1, audioCheck, 1, failureCallback);
+	
+	gonogo = 1;
+	
+			if (!vblankEvent) {
+				vblankEvent = function (dummy1) { setTimeout(VBlankSyncHandler, 20); };
+				vblankEvent(VBlankSyncHandler);
+			}
+
+  };
+
+ reader.readAsArrayBuffer(file);
+
+
+
+  return false;
+};
+
+function audioCheck(samplesRequested) 
+{		
+//console.log("generate audio");
+
+	if(samplesRequested > 0)
+	{
+		retVal = JSWvDemo.decodeWavPackData(samplesRequested);
+	
+		if(retVal == 0) {
+			gonogo = 0;
+		}
+	
+		var buffer = new Array();
+	  
+		for (var i=0; i<retVal; i++) 
+		{
+			buffer[i] = JSWvDemo.floatSamples[i];
+		} 
+				
+		return buffer;	//We return a buffer of the samples.
+	}
+	
+	return [];
+
+}
+	
+function VBlankSyncHandler() {
+	if(gonogo==1) {
+		audioHandle.executeCallback();
+	}
+
+	vblankEvent(VBlankSyncHandler);
+}	
+
+function failureCallback ()
+{
+//console.log("failure");
+}
+
+
+</script> 
+
+<div id="haxe:trace"></div>
+<script type="text/javascript" src="MyWavPack.js"></script>
+
+</body>
+</html>
